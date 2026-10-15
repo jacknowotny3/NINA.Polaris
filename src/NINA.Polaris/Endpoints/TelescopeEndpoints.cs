@@ -30,11 +30,12 @@ public static class TelescopeEndpoints {
                     pierSide = "unknown", slewing = false, parked = false
                 });
 
+            var pointingJ2000 = IndiCoordinateEpoch.ReadForUi(equip.Telescope);
             return Results.Ok(new {
                 connected = equip.Telescope.IsConnected,
                 tracking = equip.Telescope.IsTracking,
-                ra = equip.Telescope.RightAscension,
-                dec = equip.Telescope.Declination,
+                ra = pointingJ2000.raHours,
+                dec = pointingJ2000.decDeg,
                 alt = equip.Telescope.Altitude,
                 az = equip.Telescope.Azimuth,
                 pierSide = equip.Telescope.SideOfPier.ToString(),
@@ -62,9 +63,10 @@ public static class TelescopeEndpoints {
                     // before we read them off the refreshed property.
                     await Task.Delay(600);
                 }
+                var pointingJ2000 = IndiCoordinateEpoch.ReadForUi(equip.Telescope);
                 return Results.Ok(new {
-                    ra = equip.Telescope.RightAscension,
-                    dec = equip.Telescope.Declination,
+                    ra = pointingJ2000.raHours,
+                    dec = pointingJ2000.decDeg,
                     alt = equip.Telescope.Altitude,
                     az = equip.Telescope.Azimuth,
                     parked = equip.Telescope.IsParked
@@ -93,7 +95,7 @@ public static class TelescopeEndpoints {
                         }, statusCode: StatusCodes.Status409Conflict);
                     }
                 }
-                await equip.Telescope.SlewAsync(request.Ra, request.Dec);
+                await IndiCoordinateEpoch.SlewFromJ2000Async(equip.Telescope, request.Ra, request.Dec);
                 return Results.Ok(new {
                     status = "slewing",
                     target = new { request.Ra, request.Dec }
@@ -210,7 +212,7 @@ public static class TelescopeEndpoints {
             if (equip.Telescope == null)
                 return Results.BadRequest(new { error = "No telescope selected" });
 
-            await equip.Telescope.SyncAsync(request.Ra, request.Dec);
+            await IndiCoordinateEpoch.SyncFromJ2000Async(equip.Telescope, request.Ra, request.Dec);
             return Results.Ok(new { status = "synced", ra = request.Ra, dec = request.Dec });
         });
 

@@ -70,7 +70,13 @@ public class SlewCenterService {
 
     public SlewCenterJob StartJob(double ra, double dec, double toleranceArcsec = 30,
             bool skipInitialSlew = false, bool force = false,
-            double? targetRotation = null, double rotationToleranceDeg = 0.5) {
+            double? targetRotation = null, double rotationToleranceDeg = 0.5,
+            bool targetIsJ2000 = false) {
+        // Existing internal callers pass native mount coordinates. SKY explicitly
+        // supplies J2000; normalize INDI jobs once so residuals and solver results agree.
+        if (!targetIsJ2000 && _equip.Telescope is NINA.INDI.Devices.IndiTelescope) {
+            (ra, dec) = IndiCoordinateEpoch.JNowToJ2000(ra, dec, DateTime.UtcNow);
+        }
         var job = new SlewCenterJob {
             Id = Guid.NewGuid().ToString("N"),
             TargetRa = ra,
@@ -175,7 +181,7 @@ public class SlewCenterService {
             // skip the slew.
             if (!job.SkipInitialSlew) {
                 var m = _equip.Telescope;
-                double mra = m.RightAscension, mdec = m.Declination;
+                var (mra, mdec) = IndiCoordinateEpoch.ReadForUi(m);
                 if (!double.IsNaN(mra) && !double.IsNaN(mdec) &&
                         mra >= 0 && mra <= 24 && mdec >= -90 && mdec <= 90) {
                     double sepDeg = MountSlewSafety.AngularSeparationDeg(mra, mdec, job.TargetRa, job.TargetDec);
@@ -251,7 +257,7 @@ public class SlewCenterService {
                 _logger.LogInformation("Slew-only fallback: slewing to RA={Ra:F4} Dec={Dec:F4} (no plate solver)",
                     job.TargetRa, job.TargetDec);
                 try {
-                    await _equip.Telescope.SlewAsync(job.TargetRa, job.TargetDec, ct);
+                    await IndiCoordinateEpoch.SlewFromJ2000Async(_equip.Telescope, job.TargetRa, job.TargetDec, ct);
                     await WaitForSlewComplete(ct);
                 } catch (Exception slewEx) {
                     job.Error = "Slew failed: " + slewEx.Message;
@@ -337,7 +343,7 @@ public class SlewCenterService {
                     _logger.LogInformation("Slew-and-center iteration {I}: slewing to RA={Ra:F4} Dec={Dec:F4}",
                         i + 1, job.TargetRa, job.TargetDec);
 
-                    await _equip.Telescope.SlewAsync(job.TargetRa, job.TargetDec, ct);
+                    await IndiCoordinateEpoch.SlewFromJ2000Async(_equip.Telescope, job.TargetRa, job.TargetDec, ct);
                     await WaitForSlewComplete(ct);
                 }
 
@@ -390,8 +396,7 @@ public class SlewCenterService {
                 double hintRa = job.TargetRa, hintDec = job.TargetDec;
                 var scope = _equip.Telescope;
                 if (scope != null && scope.IsConnected) {
-                    var mra = scope.RightAscension;
-                    var mdec = scope.Declination;
+                    var (mra, mdec) = IndiCoordinateEpoch.ReadForUi(scope);
                     if (!double.IsNaN(mra) && !double.IsNaN(mdec) &&
                             mra >= 0 && mra <= 24 && mdec >= -90 && mdec <= 90) {
                         hintRa = mra;
@@ -595,7 +600,7 @@ public class SlewCenterService {
                 _logger.LogInformation("Syncing mount at RA={Ra:F4} Dec={Dec:F4}",
                     solveResult.RaHours, solveResult.DecDeg);
 
-                await _equip.Telescope.SyncAsync(solveResult.RaHours, solveResult.DecDeg, ct);
+                await IndiCoordinateEpoch.SyncFromJ2000Async(_equip.Telescope, solveResult.RaHours, solveResult.DecDeg, ct);
 
                 // FIELD4-1: post-sync settle. The driver-level SyncAsync
                 // returns when the EQUATORIAL_EOD write is ack'd, but

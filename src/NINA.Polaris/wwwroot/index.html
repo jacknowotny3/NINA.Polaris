@@ -1468,8 +1468,8 @@
                                    placeholder="(unnamed)">
                         </label>
                         <button class="btn btn-sm" @click="identifyTarget(false)"
-                                :disabled="identifyBusy || !mount.connected"
-                                :title="mount.connected
+                                :disabled="identifyBusy || !mountJ2000.connected"
+                                :title="mountJ2000.connected
                                     ? 'Auto-fill the target name from the object at the current pointing'
                                     : 'Connect a mount to auto-fill the target'">
                             <span x-show="!identifyBusy">🔍 Auto</span>
@@ -1674,7 +1674,7 @@
                         </div>
                         <div class="livestack-meridian-row">
                             <button class="btn btn-sm"
-                                    :disabled="!mount.connected || mfState !== 'idle'"
+                                    :disabled="!mountJ2000.connected || mfState !== 'idle'"
                                     @click="triggerMeridianFlipNow()"
                                     title="Flip the mount now and keep stacking. Reads the mount's current position; the mount flips when the re-slew crosses its meridian limit, then recenters.">
                                 🔄 Flip now
@@ -1685,20 +1685,20 @@
                                     title="Abort the running meridian flip.">
                                 ✕ Abort flip
                             </button>
-                            <span class="text-muted" x-show="!mount.connected">
+                            <span class="text-muted" x-show="!mountJ2000.connected">
                                 Connect a mount to flip.
                             </span>
                             <span class="text-warn" x-show="mfState !== 'idle'"
                                   x-text="'Flipping: ' + mfState"></span>
                             <!-- Countdown to the flip point (HA = N min past meridian). -->
                             <span class="text-muted"
-                                  x-show="mount.connected && mfState === 'idle' && mfTimeToFlipMinutes !== null && mfTimeToFlipMinutes > 0 && mfTimeToFlipMinutes < 12*60"
+                                  x-show="mountJ2000.connected && mfState === 'idle' && mfTimeToFlipMinutes !== null && mfTimeToFlipMinutes > 0 && mfTimeToFlipMinutes < 12*60"
                                   x-text="'Flip in ' + formatMinutes(mfTimeToFlipMinutes)"></span>
                             <span class="text-warn"
-                                  x-show="mount.connected && mfState === 'idle' && mfTimeToFlipMinutes !== null && mfTimeToFlipMinutes <= 0 && mfTimeToFlipMinutes > -360"
+                                  x-show="mountJ2000.connected && mfState === 'idle' && mfTimeToFlipMinutes !== null && mfTimeToFlipMinutes <= 0 && mfTimeToFlipMinutes > -360"
                                   x-text="mfSettings.autoFlipDuringLiveStack ? 'Flip due (auto)…' : 'Flip due now'"></span>
                             <span class="text-muted"
-                                  x-show="mount.connected && mfState === 'idle' && (liveStackStatus?.meridianFlipsHandled || 0) > 0"
+                                  x-show="mountJ2000.connected && mfState === 'idle' && (liveStackStatus?.meridianFlipsHandled || 0) > 0"
                                   x-text="liveStackStatus?.meridianFlipsHandled + ' flip(s) handled this stack'"></span>
                         </div>
                         <div class="livestack-meridian-err text-err"
@@ -2397,7 +2397,7 @@
                     </div>
                     <div class="control-row actions">
                         <button class="btn btn-primary" @click="polarStart()"
-                                :disabled="polar.isActive || !selectedCamera || !mount?.connected">
+                                :disabled="polar.isActive || !selectedCamera || !mountJ2000?.connected">
                             ▶ Start TPPA
                         </button>
                         <button class="btn btn-danger" @click="polarAbort()"
@@ -2436,7 +2436,7 @@
                         <template x-for="t in polarTargets.items" :key="t.name">
                             <button class="polar-target-chip"
                                     @click="polarGoToTarget(t)"
-                                    :disabled="!mount?.connected"
+                                    :disabled="!mountJ2000?.connected"
                                     :title="'Slew + center on ' + t.name
                                           + ' (RA ' + t.raHours.toFixed(2) + 'h, Dec '
                                           + t.decDeg.toFixed(1) + '°)'">
@@ -2582,8 +2582,8 @@
                         <span :class="equipCameraInfo?.connected ? 'text-ok' : 'text-warn'">
                             <span x-text="equipCameraInfo?.connected ? '✓' : '✗'"></span> Camera
                         </span>
-                        <span :class="mount?.connected ? 'text-ok' : 'text-warn'">
-                            <span x-text="mount?.connected ? '✓' : '✗'"></span> Mount
+                        <span :class="mountJ2000?.connected ? 'text-ok' : 'text-warn'">
+                            <span x-text="mountJ2000?.connected ? '✓' : '✗'"></span> Mount
                         </span>
                         <span :class="(settings.latitude || settings.longitude) ? 'text-ok' : 'text-warn'">
                             <span x-text="(settings.latitude || settings.longitude) ? '✓' : '✗'"></span> Site location
@@ -3895,8 +3895,8 @@
                                    placeholder="(unnamed)">
                         </label>
                         <button class="btn btn-sm" @click="identifyTarget(false)"
-                                :disabled="identifyBusy || preview.busy || !mount.connected"
-                                :title="mount.connected
+                                :disabled="identifyBusy || preview.busy || !mountJ2000.connected"
+                                :title="mountJ2000.connected
                                     ? 'Auto-fill the target name from the object at the current pointing'
                                     : 'Connect a mount to auto-fill the target'">
                             <span x-show="!identifyBusy">🔍 Auto</span>
@@ -4520,10 +4520,10 @@
          control surface. Hidden when no mount is
          connected. -->
                         <div class="mount-jog-cluster"
-                             x-show="mount.connected">
+                             x-show="mountJ2000.connected">
                             <div class="mount-jog-cluster-title">Mount jog</div>
                             <div class="dpad-container dpad-container-sm"
-                                 x-show="mount.capabilities?.manualJog !== false">
+                                 x-show="mountJ2000.capabilities?.manualJog !== false">
                                 <button class="dpad-btn dpad-n"
                                         @pointerdown.prevent="mountMoveStart('n', $event)"
                                         @pointerup.prevent="mountMoveStop()"
@@ -4561,20 +4561,20 @@
              out of the ROI on a single tap. Hidden when
              driver has only one rate. -->
                             <div class="mount-slew-rate"
-                                 x-show="(mount.slewRates || []).length > 1">
+                                 x-show="(mountJ2000.slewRates || []).length > 1">
                                 <div class="mount-slew-rate-label">
                                     <span>Slew rate</span>
-                                    <strong x-text="(mount.slewRates || [])
+                                    <strong x-text="(mountJ2000.slewRates || [])
                                             .find(r=> r.active)?.label || '-'"></strong>
                                 </div>
                                 <input type="range" min="0"
-                                       :max="(mount.slewRates || []).length - 1"
+                                       :max="(mountJ2000.slewRates || []).length - 1"
                                        step="1"
                                        :value="Math.max(0, mountSlewRateIndex)"
                                        @input="setMountSlewRate($event.target.value)"
                                        list="video-slew-rate-ticks">
                                 <datalist id="video-slew-rate-ticks">
-                                    <template x-for="(r, i) in (mount.slewRates || [])" :key="r.name">
+                                    <template x-for="(r, i) in (mountJ2000.slewRates || [])" :key="r.name">
                                         <option :value="i" :label="r.label"></option>
                                     </template>
                                 </datalist>
@@ -4590,7 +4590,7 @@
              shows the live phase + offset. -->
                             <button class="btn btn-sm keep-centered-btn"
                                     :class="(keepCentered?.running) ? 'btn-active' : ''"
-                                    :disabled="!cameraStream.running || !mount.tracking || mount.parked || !mount.connected"
+                                    :disabled="!cameraStream.running || !mountJ2000.tracking || mountJ2000.parked || !mountJ2000.connected"
                                     @click="toggleKeepCentered()"
                                     title="Continuously detect the brightest target and pulse the mount to keep it centered. Use during planetary recording.">
                                 <span x-show="!keepCentered?.running">Keep centered</span>
@@ -4650,7 +4650,7 @@
                      Saves planetary-imaging operators from
                      typing "Jupiter" / "Saturn" every time. -->
                                     <button type="button" class="btn btn-sm"
-                                            :disabled="videoRecording.recording || !mount?.connected"
+                                            :disabled="videoRecording.recording || !mountJ2000?.connected"
                                             title="Auto-detect the planet or Moon the mount is pointing at"
                                             @click="videoAutoDetectTarget()">
                                         📡 Auto
@@ -7402,7 +7402,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                         <div class="equip-card-header">
                             <span class="equip-card-icon">&#x1F52D;</span>
                             <span class="equip-card-title">Telescope Mount</span>
-                            <span class="equip-status-dot" :class="mount.connected ? 'connected' : 'disconnected'"></span>
+                            <span class="equip-status-dot" :class="mountJ2000.connected ? 'connected' : 'disconnected'"></span>
                         </div>
                         <div class="equip-card-body">
                             <!-- Driver picker. INDI by default; direct WiFi
@@ -7518,28 +7518,28 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                 </button>
 
                                 <label class="equip-toggle"
-                                       :aria-disabled="(!mount.connected && ((mountDriver === 'indi' && !equipMountChoice) || (mountDriver !== 'indi' && !mountDriverInfo?.available))).toString()"
-                                       :title="mount.connected ? 'Disconnect mount' : 'Connect mount'">
+                                       :aria-disabled="(!mountJ2000.connected && ((mountDriver === 'indi' && !equipMountChoice) || (mountDriver !== 'indi' && !mountDriverInfo?.available))).toString()"
+                                       :title="mountJ2000.connected ? 'Disconnect mount' : 'Connect mount'">
                                     <input type="checkbox"
-                                           :checked="!!mount.connected"
-                                           :disabled="!mount.connected && ((mountDriver === 'indi' && !equipMountChoice) || (mountDriver !== 'indi' && !mountDriverInfo?.available))"
+                                           :checked="!!mountJ2000.connected"
+                                           :disabled="!mountJ2000.connected && ((mountDriver === 'indi' && !equipMountChoice) || (mountDriver !== 'indi' && !mountDriverInfo?.available))"
                                            @change="$event.target.checked ? equipConnectMount() : equipDisconnectMount()">
                                     <span class="equip-toggle-track"></span>
                                     <span class="equip-toggle-thumb"></span>
                                 </label>
                             </div>
-                            <div class="equip-detail" x-show="mount.connected">
+                            <div class="equip-detail" x-show="mountJ2000.connected">
                                 <div class="equip-detail-name" x-text="selectedTelescope"></div>
                                 <div class="equip-detail-props">
-                                    <span>RA: <strong x-text="formatRA(mount.ra)"></strong></span>
-                                    <span>Dec: <strong x-text="formatDec(mount.dec)"></strong></span>
-                                    <span x-show="mount.alt != null">Alt: <strong x-text="(mount.alt?.toFixed(2) || '--') + '°'"></strong></span>
-                                    <span x-show="mount.az != null">Az: <strong x-text="(mount.az?.toFixed(2) || '--') + '°'"></strong></span>
-                                    <span>Tracking: <strong :class="mount.tracking ? 'text-ok' : 'text-warn'"
-                                                             x-text="mount.tracking ? 'ON' : 'OFF'"></strong></span>
-                                    <span x-show="mount.pierSide">Pier: <strong x-text="mount.pierSide"></strong></span>
-                                    <span x-show="mount.slewing" class="text-warn">SLEWING</span>
-                                    <span x-show="mount.parked" class="text-warn">PARKED</span>
+                                    <span>RA: <strong x-text="formatRA(mountJ2000.ra)"></strong></span>
+                                    <span>Dec: <strong x-text="formatDec(mountJ2000.dec)"></strong></span>
+                                    <span x-show="mountJ2000.alt != null">Alt: <strong x-text="(mountJ2000.alt?.toFixed(2) || '--') + '°'"></strong></span>
+                                    <span x-show="mountJ2000.az != null">Az: <strong x-text="(mountJ2000.az?.toFixed(2) || '--') + '°'"></strong></span>
+                                    <span>Tracking: <strong :class="mountJ2000.tracking ? 'text-ok' : 'text-warn'"
+                                                             x-text="mountJ2000.tracking ? 'ON' : 'OFF'"></strong></span>
+                                    <span x-show="mountJ2000.pierSide">Pier: <strong x-text="mountJ2000.pierSide"></strong></span>
+                                    <span x-show="mountJ2000.slewing" class="text-warn">SLEWING</span>
+                                    <span x-show="mountJ2000.parked" class="text-warn">PARKED</span>
                                 </div>
                                 <!-- Controls in two labeled rows (motion vs
                                      sync/read-only) instead of one long
@@ -7549,19 +7549,19 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                 <div class="equip-ctrl-grouplabel">Motion</div>
                                 <div class="equip-ctrl-row">
                                     <label class="equip-toggle"
-                                           :title="mount.tracking ? 'Stop tracking' : 'Start tracking'">
+                                           :title="mountJ2000.tracking ? 'Stop tracking' : 'Start tracking'">
                                         <input type="checkbox"
-                                               :checked="!!mount.tracking"
+                                               :checked="!!mountJ2000.tracking"
                                                @change="toggleTracking()">
                                         <span class="equip-toggle-track"></span>
                                         <span class="equip-toggle-thumb"></span>
                                     </label>
                                     <span class="text-muted" style="font-size:11px">Tracking</span>
-                                    <button class="btn btn-sm" @click="parkMount()" :disabled="mount.parked">Park</button>
-                                    <button class="btn btn-sm" @click="unparkMount()" :disabled="!mount.parked">Unpark</button>
+                                    <button class="btn btn-sm" @click="parkMount()" :disabled="mountJ2000.parked">Park</button>
+                                    <button class="btn btn-sm" @click="unparkMount()" :disabled="!mountJ2000.parked">Unpark</button>
                                     <button class="btn btn-sm" @click="telescopeFindHome()"
-                                            :disabled="!mount.connected || mount.parked"
-                                            x-show="mount.capabilities?.findHome"
+                                            :disabled="!mountJ2000.connected || mountJ2000.parked"
+                                            x-show="mountJ2000.capabilities?.findHome"
                                             title="Send the mount to its mechanical home position (CW down, RA/Dec hard stops). Confirm before clicking.">
                                         Home
                                     </button>
@@ -7575,12 +7575,12 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                          catalogue (a new comet, a framing worked out in
                                          another program). Issue #23. -->
                                     <button class="btn btn-sm" @click="gotoCoordsOpen()"
-                                            :disabled="!mount.connected || mount.parked"
+                                            :disabled="!mountJ2000.connected || mountJ2000.parked"
                                             title="Type RA and Dec and slew there">
                                         GoTo RA/Dec
                                     </button>
                                     <button class="btn btn-sm" @click="pointToZenith()"
-                                            :disabled="!mount.connected || mount.parked"
+                                            :disabled="!mountJ2000.connected || mountJ2000.parked"
                                             title="Slew the mount to point nearly straight up so you can rest a flat panel on the aperture. Tracking stops on arrival so the tube stays vertical.">
                                         Point up (flats)
                                     </button>
@@ -7595,8 +7595,8 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                          (the dance needs both). Hidden on Alpaca
                                          mounts that don't expose Park. -->
                                     <button class="btn btn-sm" @click="telescopeFindHomeReset()"
-                                            :disabled="!mount.connected"
-                                            x-show="mount.capabilities?.findHome && mount.capabilities?.park"
+                                            :disabled="!mountJ2000.connected"
+                                            x-show="mountJ2000.capabilities?.findHome && mountJ2000.capabilities?.park"
                                             title="Park -> Unpark -> Home. Use this if plain Home does nothing after powering the mount on (strain-wave mounts like ZWO AM3 need a park/unpark cycle to re-establish the position reference before Home works).">
                                         Reset &amp; Home
                                     </button>
@@ -7611,7 +7611,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                          no motion) so the readout + position-
                                          hinted slews work from the true origin. -->
                                     <button class="btn btn-sm" @click="refreshMountPosition()"
-                                            :disabled="!mount.connected"
+                                            :disabled="!mountJ2000.connected"
                                             title="Re-read the mount's real RA/Dec from the driver. Use after an INDI driver reset if the coordinates show 0h/0deg or look stuck. Read-only -- does not move the mount.">
                                         Refresh Pos
                                     </button>
@@ -7626,9 +7626,9 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                          target -- the bundled push prevents
                                          that. -->
                                     <button class="btn btn-sm" @click="telescopeSyncSite()"
-                                            :disabled="!mount.connected"
-                                            x-show="mount.capabilities?.setSiteLocation
-                                                    || mount.capabilities?.setSiteTime"
+                                            :disabled="!mountJ2000.connected"
+                                            x-show="mountJ2000.capabilities?.setSiteLocation
+                                                    || mountJ2000.capabilities?.setSiteTime"
                                             title="Push observatory coordinates + current UTC into the mount. Without both, GoTo lands off-target because the mount uses (lat, lon, utc) together to compute Local Sidereal Time.">
                                         Sync Site
                                     </button>
@@ -7638,8 +7638,8 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                          Renders only when the driver
                                          advertises TIME_UTC support. -->
                                     <button class="btn btn-sm" @click="telescopeSyncTime()"
-                                            :disabled="!mount.connected"
-                                            x-show="mount.capabilities?.setSiteTime"
+                                            :disabled="!mountJ2000.connected"
+                                            x-show="mountJ2000.capabilities?.setSiteTime"
                                             title="Push the host's current UTC + local-time offset to the mount via TIME_UTC. Run this after re-syncing the host clock if you don't want to re-send location too.">
                                         Sync Time
                                     </button>
@@ -7649,7 +7649,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                      current clock (the UTC the mount receives).
                                      Shown so the operator can confirm both are
                                      right before syncing. -->
-                                <div class="hint mount-site-preview" x-show="mount.connected" x-cloak
+                                <div class="hint mount-site-preview" x-show="mountJ2000.connected" x-cloak
                                      style="margin-top:6px; display:grid; grid-template-columns:1fr; gap:4px">
                                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
                                         <span :class="(settings.latitude || settings.longitude) ? '' : 'text-warn'">
@@ -9870,8 +9870,8 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                     <button class="btn btn-sm" @click="showAtlasFilters = !showAtlasFilters"
                             :class="showAtlasFilters ? 'btn-active' : ''">Filters</button>
                     <button class="btn btn-sm" @click="openMosaicPlanner()"
-                            :disabled="!skyTarget"
-                            :title="!skyTarget ? 'Pick a named target first (click on the map or search)' : 'Build a mosaic grid around this target and export to the Advanced Sequencer'">🧩 Plan mosaic</button>
+                            :disabled="!skyTargetJ2000"
+                            :title="!skyTargetJ2000 ? 'Pick a named target first (click on the map or search)' : 'Build a mosaic grid around this target and export to the Advanced Sequencer'">🧩 Plan mosaic</button>
                     <!-- Coordinate-grid cycle: off → alt-az → equatorial. -->
                     <button class="btn btn-sm" @click="cycleSkyGrid()"
                             :class="skyGridMode !== 'none' ? 'btn-active' : ''"
@@ -10131,13 +10131,13 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                             </button>
                             <button class="btn btn-sm btn-primary"
                                     @click="skyInfoSlewCenter()"
-                                    :disabled="!mount.connected || !Number.isFinite(skyInfo.raDeg)"
+                                    :disabled="!mountJ2000.connected || !Number.isFinite(skyInfo.raDeg)"
                                     title="Slew the mount + plate-solve loop to whatever is framed by the red target FOV (the map centre).">
                                 Slew &amp; Center
                             </button>
                             <button class="btn btn-sm"
                                     @click="skyInfoSlewOnly()"
-                                    :disabled="!mount.connected || !Number.isFinite(skyInfo.raDeg)"
+                                    :disabled="!mountJ2000.connected || !Number.isFinite(skyInfo.raDeg)"
                                     title="Slew the mount to whatever is framed by the red target FOV (the map centre), without the plate-solve centering loop.">
                                 Slew Only
                             </button>
@@ -10175,7 +10175,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                         </div>
                         <div class="sky-rot-row">
                             <button class="btn btn-sm btn-primary" @click="skyRotateNow()"
-                                    :disabled="!rotator.connected || !mount.connected || slewCenterJobId"
+                                    :disabled="!rotator.connected || !mountJ2000.connected || slewCenterJobId"
                                     :title="!rotator.connected ? 'Connect a rotator first' : 'Solve, turn the rotator to this angle, solve again to confirm; the mount stays where it is'">Rotate now</button>
                             <button class="btn btn-sm" @click="skyRotClear()"
                                     :disabled="skyTargetRotDeg == null"
@@ -10225,20 +10225,20 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                     <div class="sky-map-overlay-actions">
                         <button class="btn btn-sm btn-primary"
                                 @click="slewAndCenter()"
-                                :disabled="!mount.connected || slewCenterJobId"
-                                :title="!mount.connected ? 'Connect a mount first' : (slewCenterJobId ? 'Slew & Center already running' : 'Slew, plate-solve, re-center on whatever is framed in the red target FOV')">
+                                :disabled="!mountJ2000.connected || slewCenterJobId"
+                                :title="!mountJ2000.connected ? 'Connect a mount first' : (slewCenterJobId ? 'Slew & Center already running' : 'Slew, plate-solve, re-center on whatever is framed in the red target FOV')">
                             Slew &amp; Center
                         </button>
                         <button class="btn btn-sm"
                                 @click="slewToCurrent()"
-                                :disabled="!mount.connected"
-                                :title="!mount.connected ? 'Connect a mount first' : 'Slew without plate-solve to the centre of the red target FOV'">
+                                :disabled="!mountJ2000.connected"
+                                :title="!mountJ2000.connected ? 'Connect a mount first' : 'Slew without plate-solve to the centre of the red target FOV'">
                             Slew Only
                         </button>
                         <button class="btn btn-sm"
                                 @click="skyGoToMount()"
-                                :disabled="!mount.connected"
-                                :title="!mount.connected ? 'Connect a mount first' : 'Re-centre the sky map on where the mount is currently pointing'">
+                                :disabled="!mountJ2000.connected"
+                                :title="!mountJ2000.connected ? 'Connect a mount first' : 'Re-centre the sky map on where the mount is currently pointing'">
                             Center on mount
                         </button>
                         <!-- Recovery (no movement): re-establish the mount's
@@ -10248,14 +10248,14 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                              pointing at the map centre (when you can't solve). -->
                         <button class="btn btn-sm"
                                 @click="solveAndSyncHere()"
-                                :disabled="!mount.connected || solveSyncBusy"
-                                :title="!mount.connected ? 'Connect a mount first' : 'Capture + plate-solve + sync to the real sky position, without moving, recovers a lost pointing model'">
+                                :disabled="!mountJ2000.connected || solveSyncBusy"
+                                :title="!mountJ2000.connected ? 'Connect a mount first' : 'Capture + plate-solve + sync to the real sky position, without moving, recovers a lost pointing model'">
                             <span x-show="!solveSyncBusy">⚓ Solve &amp; Sync</span>
                             <span x-show="solveSyncBusy">Solving…</span>
                         </button>
                         <button class="btn btn-sm"
                                 @click="syncMountHere()"
-                                :disabled="!mount.connected"
+                                :disabled="!mountJ2000.connected"
                                 title="Tell the mount it is pointing at the map centre (red FOV), without moving. Use to recover pointing when you can't plate-solve (clouds). Confirms first.">
                             Sync here
                         </button>
@@ -10323,7 +10323,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                              does a precise ephemeris GoTo onto the body. -->
                         <span class="center-body-row">
                             <select class="input-sm" x-model="centerBodyName"
-                                    :disabled="!mount.connected || centerBodyJobId"
+                                    :disabled="!mountJ2000.connected || centerBodyJobId"
                                     title="Sun, Moon or a planet to center on (uses ephemeris + a nearby plate solve)">
                                 <option value="Moon">Moon</option>
                                 <option value="Sun">Sun ⚠</option>
@@ -10338,8 +10338,8 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                             <button class="btn btn-sm"
                                     x-show="!centerBodyJobId"
                                     @click="startCenterBody()"
-                                    :disabled="!mount.connected"
-                                    :title="!mount.connected ? 'Connect a mount first' : 'Ephemeris + solve a nearby star field + GoTo onto the object (plate solving can\'t solve the object itself)'">
+                                    :disabled="!mountJ2000.connected"
+                                    :title="!mountJ2000.connected ? 'Connect a mount first' : 'Ephemeris + solve a nearby star field + GoTo onto the object (plate solving can\'t solve the object itself)'">
                                 🪐 Center on body
                             </button>
                             <button class="btn btn-sm btn-danger"
@@ -10362,7 +10362,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                          without having to remember which kind of slew
                          is running. -->
                     <div class="sky-map-overlay-status"
-                         x-show="slewCenterJobId || mount.slewing"
+                         x-show="slewCenterJobId || mountJ2000.slewing"
                          x-cloak>
                         <span class="sky-map-status-text">
                             <template x-if="slewCenterJobId">
@@ -10377,7 +10377,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                     </span>
                                 </span>
                             </template>
-                            <template x-if="!slewCenterJobId && mount.slewing">
+                            <template x-if="!slewCenterJobId && mountJ2000.slewing">
                                 <span><strong>SLEWING</strong></span>
                             </template>
                         </span>
@@ -10527,7 +10527,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                      .sky-map-overlay-actions in the iframe wrapper
                      above). Empty-state hint kept as a tiny line that
                      only shows when there's no target. -->
-                <div class="sky-empty" x-show="!skyTarget && !skyShowResults">
+                <div class="sky-empty" x-show="!skyTargetJ2000 && !skyShowResults">
                     <p class="hint">Click any object on the map, or use Search above.</p>
                 </div>
 
@@ -10539,7 +10539,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                 <!-- Same .force-hidden trick as the camera popup below
                      to dodge the Alpine x-show reactivity issue. -->
                 <div class="mount-float-panel"
-                     :class="{ 'force-hidden': !mount.connected || !mountPanel.visible }"
+                     :class="{ 'force-hidden': !mountJ2000.connected || !mountPanel.visible }"
                      :style="`left: ${mountPanel.x}px; top: ${mountPanel.y}px;`">
                     <div class="mount-float-header"
                          @mousedown="mountPanelDragStart($event)"
@@ -10591,39 +10591,39 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                  touchend, which would re-fire the move and
                                  leave the mount moving after release. -->
                             <div class="dpad-container dpad-container-sm"
-                                 x-show="mount.capabilities?.manualJog !== false">
+                                 x-show="mountJ2000.capabilities?.manualJog !== false">
                                 <button class="dpad-btn dpad-n"
                                         @pointerdown.prevent="mountMoveStart('n', $event)"
                                         @pointerup.prevent="mountMoveStop()"
                                         @pointerleave="mountMoveStop()"
                                         @pointercancel="mountMoveStop()"
-                                        :disabled="!mount.connected">N</button>
+                                        :disabled="!mountJ2000.connected">N</button>
                                 <button class="dpad-btn dpad-w"
                                         @pointerdown.prevent="mountMoveStart('w', $event)"
                                         @pointerup.prevent="mountMoveStop()"
                                         @pointerleave="mountMoveStop()"
                                         @pointercancel="mountMoveStop()"
-                                        :disabled="!mount.connected">W</button>
+                                        :disabled="!mountJ2000.connected">W</button>
                                 <button class="dpad-btn dpad-stop" @click="mountStop()">STOP</button>
                                 <button class="dpad-btn dpad-e"
                                         @pointerdown.prevent="mountMoveStart('e', $event)"
                                         @pointerup.prevent="mountMoveStop()"
                                         @pointerleave="mountMoveStop()"
                                         @pointercancel="mountMoveStop()"
-                                        :disabled="!mount.connected">E</button>
+                                        :disabled="!mountJ2000.connected">E</button>
                                 <button class="dpad-btn dpad-s"
                                         @pointerdown.prevent="mountMoveStart('s', $event)"
                                         @pointerup.prevent="mountMoveStop()"
                                         @pointerleave="mountMoveStop()"
                                         @pointercancel="mountMoveStop()"
-                                        :disabled="!mount.connected">S</button>
+                                        :disabled="!mountJ2000.connected">S</button>
                             </div>
                             <!-- Fallback STOP-only row when the driver doesn't
                                  advertise jog. Without this the operator has
                                  no way to abort an in-progress slew from the
                                  floating panel. -->
                             <div class="dpad-container dpad-container-sm"
-                                 x-show="mount.capabilities?.manualJog === false">
+                                 x-show="mountJ2000.capabilities?.manualJog === false">
                                 <button class="dpad-btn dpad-stop"
                                         style="grid-area: c;"
                                         @click="mountStop()">STOP</button>
@@ -10640,53 +10640,53 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                  which step they're on without counting
                                  ticks. -->
                             <div class="mount-slew-rate"
-                                 x-show="(mount.slewRates || []).length > 1">
+                                 x-show="(mountJ2000.slewRates || []).length > 1">
                                 <div class="mount-slew-rate-label">
                                     <span>Slew rate</span>
-                                    <strong x-text="(mount.slewRates || [])
+                                    <strong x-text="(mountJ2000.slewRates || [])
                                                 .find(r => r.active)?.label || '-'"></strong>
                                 </div>
                                 <input type="range" min="0"
-                                       :max="(mount.slewRates || []).length - 1"
+                                       :max="(mountJ2000.slewRates || []).length - 1"
                                        step="1"
                                        :value="Math.max(0, mountSlewRateIndex)"
                                        @input="setMountSlewRate($event.target.value)"
                                        list="mount-slew-rate-ticks">
                                 <datalist id="mount-slew-rate-ticks">
-                                    <template x-for="(r, i) in (mount.slewRates || [])" :key="r.name">
+                                    <template x-for="(r, i) in (mountJ2000.slewRates || [])" :key="r.name">
                                         <option :value="i" :label="r.label"></option>
                                     </template>
                                 </datalist>
                             </div>
                         </div>
                         <div class="mount-info mount-info-sm">
-                            <div class="info-row"><span>RA:</span><strong x-text="formatRA(mount.ra)"></strong></div>
-                            <div class="info-row"><span>Dec:</span><strong x-text="formatDec(mount.dec)"></strong></div>
-                            <div class="info-row"><span>Alt:</span><strong x-text="formatDeg(mount.alt)"></strong></div>
-                            <div class="info-row"><span>Az:</span><strong x-text="formatDeg(mount.az)"></strong></div>
+                            <div class="info-row"><span>RA:</span><strong x-text="formatRA(mountJ2000.ra)"></strong></div>
+                            <div class="info-row"><span>Dec:</span><strong x-text="formatDec(mountJ2000.dec)"></strong></div>
+                            <div class="info-row"><span>Alt:</span><strong x-text="formatDeg(mountJ2000.alt)"></strong></div>
+                            <div class="info-row"><span>Az:</span><strong x-text="formatDeg(mountJ2000.az)"></strong></div>
                             <div class="info-row"><span>Track:</span>
-                                <strong :class="mount.tracking ? 'text-ok' : 'text-warn'"
-                                        x-text="mount.tracking ? 'ON' : 'OFF'"></strong>
+                                <strong :class="mountJ2000.tracking ? 'text-ok' : 'text-warn'"
+                                        x-text="mountJ2000.tracking ? 'ON' : 'OFF'"></strong>
                             </div>
-                            <div class="info-row"><span>Pier:</span><strong x-text="mount.pierSide"></strong></div>
-                            <div class="info-row" x-show="mount.slewing">
+                            <div class="info-row"><span>Pier:</span><strong x-text="mountJ2000.pierSide"></strong></div>
+                            <div class="info-row" x-show="mountJ2000.slewing">
                                 <span>Status:</span><strong class="text-warn">SLEWING</strong>
                             </div>
-                            <div class="info-row" x-show="mount.parked">
+                            <div class="info-row" x-show="mountJ2000.parked">
                                 <span>Status:</span><strong class="text-warn">PARKED</strong>
                             </div>
                         </div>
                     </div>
                     <div class="mount-float-actions">
-                        <button class="btn btn-sm" @click="toggleTracking()" :disabled="!mount.connected">
-                            <span x-text="mount.tracking ? 'Stop Track' : 'Start Track'"></span>
+                        <button class="btn btn-sm" @click="toggleTracking()" :disabled="!mountJ2000.connected">
+                            <span x-text="mountJ2000.tracking ? 'Stop Track' : 'Start Track'"></span>
                         </button>
-                        <button class="btn btn-sm" @click="parkMount()" :disabled="!mount.connected || mount.parked">Park</button>
-                        <button class="btn btn-sm" @click="unparkMount()" :disabled="!mount.connected || !mount.parked">Unpark</button>
+                        <button class="btn btn-sm" @click="parkMount()" :disabled="!mountJ2000.connected || mountJ2000.parked">Park</button>
+                        <button class="btn btn-sm" @click="unparkMount()" :disabled="!mountJ2000.connected || !mountJ2000.parked">Unpark</button>
                         <!-- Capture this pointing as a custom-horizon point: aim
                              at an obstacle's top edge and click. -->
                         <button class="btn btn-sm" @click="horizonAddFromMount()"
-                                :disabled="!mount.connected"
+                                :disabled="!mountJ2000.connected"
                                 title="Add a custom-horizon point at the scope's current altitude + azimuth">🌄 Horizon point</button>
                     </div>
                 </div>
@@ -10703,7 +10703,7 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                      and can't grab the header anymore. -->
                 <button class="mount-float-reopen"
                         :class="{ 'active': mountPanel.visible }"
-                        x-show="mount.connected"
+                        x-show="mountJ2000.connected"
                         x-cloak
                         @click="if ($event.shiftKey) { resetMountPanelPosition(); mountPanel.visible = true; } else { mountPanel.visible = !mountPanel.visible; persistMountPanel(); }"
                         @contextmenu.prevent="resetMountPanelPosition(); mountPanel.visible = true"
@@ -12126,11 +12126,11 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                     :disabled="mfState === 'idle'"
                                     style="margin-left: auto;">Abort flip</button>
                         </div>
-                        <p class="seq-dither-hint text-muted" x-show="!mount.connected">
+                        <p class="seq-dither-hint text-muted" x-show="!mountJ2000.connected">
                             ⚠ Mount not connected, meridian time unavailable.
                         </p>
                         <p class="seq-dither-hint text-muted"
-                           x-show="mount.connected && Math.abs(settings.longitude || 0) < 0.01">
+                           x-show="mountJ2000.connected && Math.abs(settings.longitude || 0) < 0.01">
                             ⚠ Observatory longitude is 0, set it in Settings for correct LST.
                         </p>
                         <p class="seq-dither-hint text-muted">
@@ -13592,13 +13592,13 @@ cd xpra-html5 &amp;&amp; sudo python3 ./setup.py install</pre>
                                 <div style="display:flex; gap: 6px; flex-wrap: wrap;">
                                     <button class="btn btn-sm btn-primary"
                                             @click="filesSolveCenter(true)"
-                                            :disabled="!mount?.connected"
+                                            :disabled="!mountJ2000?.connected"
                                             title="Center on this field without a big slew (the scope is already pointing here -- just refine the framing)">
                                         Center Only
                                     </button>
                                     <button class="btn btn-sm btn-primary"
                                             @click="filesSolveCenter(false)"
-                                            :disabled="!mount?.connected"
+                                            :disabled="!mountJ2000?.connected"
                                             title="Slew to the solved RA/Dec and center (iterative plate-solve convergence)">
                                         Slew &amp; Center
                                     </button>
@@ -17429,7 +17429,7 @@ Windows  winget install Rclone.Rclone</code></pre>
                                 @contextmenu.prevent="horizonRightClick($event)"></canvas>
                         <div class="control-row" style="margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap">
                             <button class="btn btn-sm btn-primary" @click="horizonAddFromMount()"
-                                    :disabled="!mount?.connected"
+                                    :disabled="!mountJ2000?.connected"
                                     title="Point the scope at the top of an obstacle, then capture its azimuth + altitude as a horizon point">
                                 🔭 Add from telescope
                             </button>
@@ -20022,10 +20022,10 @@ Windows  winget install Rclone.Rclone</code></pre>
             <div class="obs-location-error" x-show="gotoCoords.error" x-text="gotoCoords.error"></div>
             <div class="location-setup-actions">
                 <button class="btn btn-primary" @click="gotoCoordsSlewCenter()"
-                        :disabled="gotoCoords.raHours == null || !mount.connected || slewCenterJobId"
+                        :disabled="gotoCoords.raHours == null || !mountJ2000.connected || slewCenterJobId"
                         title="Slew, plate-solve and re-center on these coordinates">Slew &amp; Center</button>
                 <button class="btn" @click="gotoCoordsSlew()"
-                        :disabled="gotoCoords.raHours == null || !mount.connected"
+                        :disabled="gotoCoords.raHours == null || !mountJ2000.connected"
                         title="Slew without the plate-solve loop">Slew Only</button>
                 <button class="btn" @click="gotoCoordsShowOnMap()"
                         :disabled="gotoCoords.raHours == null">Show on sky map</button>
@@ -22408,7 +22408,7 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "polaris-root" \
                 : basicScreen==='video'
                 ? (videoRecording.recording ? ('REC ' + (videoRecording.frames || 0)) : (cameraStream.running ? 'Streaming' : 'Idle'))
                 : basicScreen==='sky'
-                ? (slewCenterJobId ? 'Slewing' : (skyTarget ? skyTarget.name : 'Browsing'))
+                ? (slewCenterJobId ? 'Slewing' : (skyTargetJ2000 ? skyTargetJ2000.name : 'Browsing'))
                 : basicScreen==='config'
                 ? (basicAnyDisconnected() ? 'Setup' : 'All connected')
                 : (captureProgressActive() ? captureProgressLabel() : (preview.busy ? 'Exposing' : (preview.looping ? 'Looping' : 'Idle')))"></b></div>
@@ -22450,13 +22450,13 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "polaris-root" \
                     </select>
                     <button class="bs-cbtn xs bs-cfg" @click="basicOpenEquipConfig('camera')" title="Settings">&#9881;</button>
                     <button class="bs-cbtn xs" @click="selectedCamera ? equipDisconnectCamera() : equipConnectCamera()" x-text="selectedCamera ? 'Disconnect' : 'Connect'"></button></div>
-                <div class="bs-cdev"><span class="bs-dot" :class="mount.connected ? '' : 'off'"></span><span class="bs-cdlbl">Mount</span>
-                    <select class="bs-cdsel" :disabled="mount.connected" @change="basicSetDevChoice('mount', $event.target.value)">
+                <div class="bs-cdev"><span class="bs-dot" :class="mountJ2000.connected ? '' : 'off'"></span><span class="bs-cdlbl">Mount</span>
+                    <select class="bs-cdsel" :disabled="mountJ2000.connected" @change="basicSetDevChoice('mount', $event.target.value)">
                         <option value="" x-text="basicDevOptions('mount').length ? 'Select device' : 'No devices'"></option>
                         <template x-for="o in basicDevOptions('mount')" :key="'mnt-'+o.value"><option :value="o.value" :selected="basicDevSelected('mount', o.value)" x-text="o.label"></option></template>
                     </select>
                     <button class="bs-cbtn xs bs-cfg" @click="basicOpenEquipConfig('mount')" title="Settings">&#9881;</button>
-                    <button class="bs-cbtn xs" @click="mount.connected ? equipDisconnectMount() : equipConnectMount()" x-text="mount.connected ? 'Disconnect' : 'Connect'"></button></div>
+                    <button class="bs-cbtn xs" @click="mountJ2000.connected ? equipDisconnectMount() : equipConnectMount()" x-text="mountJ2000.connected ? 'Disconnect' : 'Connect'"></button></div>
                 <div class="bs-cdev"><span class="bs-dot" :class="focusConnected ? '' : 'off'"></span><span class="bs-cdlbl">Focuser</span>
                     <select class="bs-cdsel" :disabled="focusConnected" @change="basicSetDevChoice('focuser', $event.target.value)">
                         <option value="" x-text="basicDevOptions('focuser').length ? 'Select device' : 'No devices'"></option>
@@ -22648,8 +22648,8 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "polaris-root" \
                 <span x-show="Number.isFinite(skyInfo.decDeg)">Dec <b x-text="Number.isFinite(skyInfo.decDeg) ? formatDec(skyInfo.decDeg) : ''"></b></span>
                 <span x-show="typeof skyInfo.magnitude === 'number'">Mag <b x-text="skyInfo.magnitude"></b></span>
             </div>
-            <button class="bs-tgoto" @click="skyInfoSlewCenter()" :disabled="!mount.connected || slewCenterJobId">&#127919; Slew &amp; Center</button>
-            <button class="bs-tgoto2" @click="skyInfoSlewOnly()" :disabled="!mount.connected || slewCenterJobId">GoTo only (no plate-solve)</button>
+            <button class="bs-tgoto" @click="skyInfoSlewCenter()" :disabled="!mountJ2000.connected || slewCenterJobId">&#127919; Slew &amp; Center</button>
+            <button class="bs-tgoto2" @click="skyInfoSlewOnly()" :disabled="!mountJ2000.connected || slewCenterJobId">GoTo only (no plate-solve)</button>
         </div>
 
         <div class="bs-rail right">
@@ -22822,10 +22822,10 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "polaris-root" \
         <div class="bs-mount" x-show="basicScreen==='preview' || basicScreen==='video' || basicScreen==='sky'" :class="{ 'mp-collapsed': !mountOpen }">
             <div class="bs-side">
                 <button class="bs-icn" style="width:38px;height:38px" @click="mountOpen=!mountOpen" title="Mount pad"><span class="bs-big">&#10530;</span></button>
-                <button class="bs-pill" :class="mount.tracking ? 'on' : ''" @click="toggleTracking()">Track</button>
-                <div class="bs-spd" x-show="mountOpen && (mount.slewRates || []).length" x-cloak>
-                    <div class="bs-spdh"><span>Speed</span><b x-text="(mount.slewRates && mount.slewRates[mountSlewRateIndex]) ? mount.slewRates[mountSlewRateIndex].name : '--'"></b></div>
-                    <input type="range" min="0" :max="Math.max(0, (mount.slewRates || []).length - 1)"
+                <button class="bs-pill" :class="mountJ2000.tracking ? 'on' : ''" @click="toggleTracking()">Track</button>
+                <div class="bs-spd" x-show="mountOpen && (mountJ2000.slewRates || []).length" x-cloak>
+                    <div class="bs-spdh"><span>Speed</span><b x-text="(mountJ2000.slewRates && mountJ2000.slewRates[mountSlewRateIndex]) ? mountJ2000.slewRates[mountSlewRateIndex].name : '--'"></b></div>
+                    <input type="range" min="0" :max="Math.max(0, (mountJ2000.slewRates || []).length - 1)"
                            :value="mountSlewRateIndex < 0 ? 0 : mountSlewRateIndex" @input="setMountSlewRate($event.target.value)">
                 </div>
             </div>
@@ -22845,14 +22845,14 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "polaris-root" \
         <div class="bs-bottom" x-show="basicScreen!=='autorun'">
             <button class="bs-full" @click="basicSetPref('off')">Full Mode</button>
             <div class="bs-chip" x-show="basicScreen==='preview' || basicScreen==='live' || basicScreen==='video'"><span class="bs-dot" :class="selectedCamera ? '' : 'off'"></span><span class="bs-name" x-text="selectedCamera || 'Cam'"></span></div>
-            <div class="bs-chip" x-show="basicScreen==='preview' || basicScreen==='live' || basicScreen==='guide' || basicScreen==='video' || basicScreen==='sky'"><span class="bs-dot" :class="mount.connected ? '' : 'off'"></span><span class="bs-name" x-text="selectedTelescope || 'Mount'"></span></div>
+            <div class="bs-chip" x-show="basicScreen==='preview' || basicScreen==='live' || basicScreen==='guide' || basicScreen==='video' || basicScreen==='sky'"><span class="bs-dot" :class="mountJ2000.connected ? '' : 'off'"></span><span class="bs-name" x-text="selectedTelescope || 'Mount'"></span></div>
             <div class="bs-chip" x-show="basicScreen==='preview'"><span class="bs-dot" :class="focusConnected ? '' : 'off'"></span><span class="bs-name" x-text="selectedFocuser || 'Focuser'"></span></div>
             <button class="bs-auto" x-show="basicScreen==='preview'" :class="stretchAuto ? 'on' : ''" @click="toggleAutoStretch()">Auto stretch</button>
             <div class="bs-chip" x-show="basicScreen==='focus'" x-cloak><span class="bs-dot" :class="focusConnected ? '' : 'off'"></span><span class="bs-name" x-text="selectedFocuser || 'Focuser'"></span></div>
             <div class="bs-chip bs-num" x-show="basicScreen==='focus'" x-cloak>Step <b x-text="focusStepFast"></b></div>
             <div class="bs-chip bs-num" x-show="basicScreen==='focus' && autoFocus.lastHfr" x-cloak>HFR <b x-text="autoFocus.lastHfr?.toFixed(2)"></b></div>
             <div class="bs-chip" x-show="basicScreen==='guide'" x-cloak><span class="bs-dot" :class="guider.guideCameraConnected ? '' : 'off'"></span><span class="bs-name" x-text="guider.guideCameraName || 'Guide cam'"></span></div>
-            <div class="bs-mountacts" x-show="mount.connected && (basicScreen==='preview' || basicScreen==='live' || basicScreen==='guide' || basicScreen==='video' || basicScreen==='sky')" x-cloak>
+            <div class="bs-mountacts" x-show="mountJ2000.connected && (basicScreen==='preview' || basicScreen==='live' || basicScreen==='guide' || basicScreen==='video' || basicScreen==='sky')" x-cloak>
                 <button class="bs-mbtn" @click="telescopeFindHome()">&#8962; Home</button>
                 <button class="bs-mbtn" @click="basicMountPark()">&#9209; Park</button>
                 <button class="bs-mbtn" @click="basicMountSync()">&#8646; Sync</button>
@@ -25332,7 +25332,7 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "polaris-root" \
                             });
                         })();
                     </script>
-    <script src="/js/app.js?v=20261013-edsdk"></script>
+    <script src="/js/app.js?v=20261014-indi-epochs-poc"></script>
     <!-- Interactive introductory tour. Self-contained; reads window.__alpineRoot
          only for navigation, issues no API calls (additive + isolated). -->
     <script src="/js/tour.js?v=20260728-bartour"></script>

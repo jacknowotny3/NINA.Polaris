@@ -47,8 +47,12 @@ public static class SkyEndpoints {
                 // switch can zero it out.
                 var rig = profiles.ActiveEquipmentProfile;
                 double largeMoveDeg = rig?.SlewConfirmDeg ?? MountSlewSafety.LargeMoveDeg;
+                // Safety calculations use of-date coordinates, just like ITelescope.
+                var targetNow = scope is NINA.INDI.Devices.IndiTelescope
+                    ? IndiCoordinateEpoch.J2000ToJNow(request.Ra, request.Dec, DateTime.UtcNow)
+                    : (request.Ra, request.Dec);
                 var v = MountSlewSafety.Evaluate(
-                    mra, mdec, request.Ra, request.Dec,
+                    mra, mdec, targetNow.Item1, targetNow.Item2,
                     profiles.Active.Latitude, profiles.Active.Longitude, DateTime.UtcNow,
                     guard.AltitudeFloorDeg, largeMoveDeg);
                 if (v.Warn) {
@@ -86,7 +90,8 @@ public static class SkyEndpoints {
             double? wantRot = request.Rotation is double r && equip.Rotator is { IsConnected: true }
                 ? ((r % 360) + 360) % 360 : null;
             var job = slewCenter.StartJob(request.Ra, request.Dec, request.ToleranceArcsec,
-                request.CenterOnly, request.Force, wantRot, request.RotationToleranceDeg ?? 0.5);
+                request.CenterOnly, request.Force, wantRot, request.RotationToleranceDeg ?? 0.5,
+                targetIsJ2000: true);
             return Results.Accepted(value: new {
                 jobId = job.Id,
                 target = new { request.Ra, request.Dec },
@@ -789,7 +794,7 @@ public static class SkyEndpoints {
         // imaging. Sun is intentionally excluded (you don't image it
         // with the same rig setup; including would make a 1° pointing
         // to a daytime sky always score 'Sun').
-        group.MapGet("/nearest-planet", (double ra, double dec, ProfileService profiles) => {
+        group.MapGet("/nearest-planet", (double ra, double dec, ProfileService profiles, bool j2000 = false) => {
             var p = profiles.Active;
             var time = new AstroTime(DateTime.UtcNow);
             var observer = new Observer(p.Latitude, p.Longitude, p.Altitude);
@@ -812,7 +817,7 @@ public static class SkyEndpoints {
             foreach (var (name, body) in targets) {
                 try {
                     var eq = Astronomy.Equator(body, time, observer,
-                        EquatorEpoch.OfDate, Aberration.Corrected);
+                        j2000 ? EquatorEpoch.J2000 : EquatorEpoch.OfDate, Aberration.Corrected);
                     var sep = AngularSeparationDeg(ra, dec, eq.ra, eq.dec);
                     if (sep < bestSep) {
                         bestSep = sep;

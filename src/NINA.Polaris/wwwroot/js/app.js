@@ -467,7 +467,8 @@ function ninaApp() {
         liveStackStatus: null,    // { isRunning, frameCount, ..., triggers: {...}, preProc: {...} }
 
         // Mount
-        mount: {
+        // INDI RA/Dec are converted to J2000 by the server; other backends are outside this PoC.
+        mountJ2000: {
             ra: null, dec: null, alt: null, az: null,
             tracking: false, slewing: false, parked: false,
             pierSide: 'unknown', connected: false,
@@ -826,7 +827,7 @@ function ninaApp() {
         // SKY toolbar: the search box is hidden behind the Search button so the
         // toolbar fits on one row; clicking Search reveals + focuses the input.
         skySearchOpen: false,
-        skyTarget: null,
+        skyTargetJ2000: null,
         // Last DEFINITE sky target (a selected catalog object or a clicked
         // RA/Dec). Preferred by GoTo / Slew & Center / Sync over the live map
         // centre, which drifts in RA while you wait (#13). Cleared on a drag.
@@ -835,7 +836,7 @@ function ninaApp() {
         // User toggle: when ON, picking a target (map click, search
         // hit, Stellarium import) smoothly pans the sky engine to
         // the chosen object via _skyLookAt. When OFF, the same picks
-        // still populate skyTarget + the skyInfo card, but the
+        // still populate skyTargetJ2000 + the skyInfo card, but the
         // engine view stays exactly where the user left it, useful
         // for browsing without losing the current framing.
         // Persisted in localStorage so it survives reloads. Default
@@ -12027,7 +12028,7 @@ function ninaApp() {
         async saveServerStack() {
             const target = ((this.targetName || '').trim()
                             || this.seqStatus?.currentTarget
-                            || this.skyTarget?.name
+                            || this.skyTargetJ2000?.name
                             || '').replace(/[^A-Za-z0-9_\-]/g, '_');
             const url = '/api/livestack/save-current'
                       + (target ? ('?target=' + encodeURIComponent(target)) : '');
@@ -13581,10 +13582,10 @@ function ninaApp() {
                     type: 'set-constellations',
                     lines: this.skyConstLines, art: this.skyConstArt
                 });
-                if (this.mount?.connected
-                    && Number.isFinite(this.mount.ra)
-                    && Number.isFinite(this.mount.dec)) {
-                    this._skyLookAt(this.mount.ra, this.mount.dec, 15);
+                if (this.mountJ2000?.connected
+                    && Number.isFinite(this.mountJ2000.ra)
+                    && Number.isFinite(this.mountJ2000.dec)) {
+                    this._skyLookAt(this.mountJ2000.ra, this.mountJ2000.dec, 15);
                 } else if (!this._skyDefaultLookAtDone) {
                     // No mount connected, aim at the celestial pole of
                     // the observer's hemisphere. Engine's default points
@@ -14024,11 +14025,11 @@ function ninaApp() {
             this._skyPushObserverAndTime();
             // Mark a "programmatic pan in progress" window so the
             // bridge's centre echoes during the smooth-pan animation
-            // don't clobber skyTarget.name. The engine's pan typically
+            // don't clobber skyTargetJ2000.name. The engine's pan typically
             // completes in ~500–1500 ms; 3 s gives the trailing centre
             // events room to land. The 'center' handler reads this
             // timestamp and treats any echo before it as a pan-echo
-            // (skyTarget kept verbatim) instead of a user drag.
+            // (skyTargetJ2000 kept verbatim) instead of a user drag.
             this._skyProgrammaticPanUntil = Date.now() + 3000;
             // Remember a genuinely fixed sky target (a catalog object, or a
             // definite RA/Dec) so GoTo / Slew & Center / Sync use its fixed
@@ -14064,7 +14065,7 @@ function ninaApp() {
                 if (c && Number.isFinite(c.raDeg) && Number.isFinite(c.decDeg)) {
                     return { ra: c.raDeg / 15, dec: c.decDeg };
                 }
-            } catch { /* fall through to skyTarget */ }
+            } catch { /* fall through to skyTargetJ2000 */ }
             return this._currentSlewTarget();
         },
 
@@ -14981,9 +14982,9 @@ function ninaApp() {
             if (!this._asstWatch || !this.asst.open) return;
             const snap = {
                 tab: this.tab,
-                mount: this.mount ? {
-                    connected: !!this.mount.connected, ra: this.mount.ra, dec: this.mount.dec,
-                    tracking: this.mount.tracking, slewing: this.mount.slewing
+                mount: this.mountJ2000 ? {
+                    connected: !!this.mountJ2000.connected, ra: this.mountJ2000.ra, dec: this.mountJ2000.dec,
+                    tracking: this.mountJ2000.tracking, slewing: this.mountJ2000.slewing
                 } : null,
                 camera: this.camera ? {
                     connected: !!this.camera.connected, temperature: this.camera.temperature
@@ -15510,21 +15511,21 @@ function ninaApp() {
                         // SWE-5: ASIAIR-style initial framing. If the
                         // mount is connected at ready time, centre the
                         // view on mount.ra/dec at FOV=15°. Then seed
-                        // skyTarget from the engine's actual current
+                        // skyTargetJ2000 from the engine's actual current
                         // centre via _skyGetCenter(), this is robust
                         // to (a) mount.connected being false at ready
                         // because the first WS status push hasn't
                         // landed yet, (b) the change-hook not firing
-                        // before user interaction, (c) stale skyTarget
+                        // before user interaction, (c) stale skyTargetJ2000
                         // values persisted from a previous session.
-                        if (this.mount?.connected
-                            && Number.isFinite(this.mount.ra)
-                            && Number.isFinite(this.mount.dec)) {
-                            this._skyLookAt(this.mount.ra, this.mount.dec, 15);
+                        if (this.mountJ2000?.connected
+                            && Number.isFinite(this.mountJ2000.ra)
+                            && Number.isFinite(this.mountJ2000.dec)) {
+                            this._skyLookAt(this.mountJ2000.ra, this.mountJ2000.dec, 15);
                         }
                         this._skyGetCenter().then(c => {
                             if (c && Number.isFinite(c.raDeg) && Number.isFinite(c.decDeg)) {
-                                this.skyTarget = {
+                                this.skyTargetJ2000 = {
                                     name: 'Centre ' + c.raDeg.toFixed(2) + '°,' + c.decDeg.toFixed(2) + '°',
                                     ra: c.raDeg / 15,
                                     dec: c.decDeg
@@ -15611,20 +15612,20 @@ function ninaApp() {
                             // open, the centre events arriving are pan
                             // echoes from the engine animating toward
                             // the user-picked target, NOT a genuine
-                            // drag. Treat them as such: keep skyTarget
+                            // drag. Treat them as such: keep skyTargetJ2000
                             // verbatim (especially .name, which was set
                             // to the object name by _populateSkyInfo
                             // milliseconds ago), only refresh the FOV
                             // overlay so the red rectangle tracks the
                             // moving centre. Without this gate, the
                             // intermediate centre frames overwrite
-                            // skyTarget.name with "Centre ra,dec" and
+                            // skyTargetJ2000.name with "Centre ra,dec" and
                             // Add-to-sequence picks up the coord string
                             // instead of "Moon" / "M31" / etc.
                             const inPan = this._skyProgrammaticPanUntil
                                 && Date.now() < this._skyProgrammaticPanUntil;
                             if (!inPan) {
-                                this.skyTarget = {
+                                this.skyTargetJ2000 = {
                                     name: 'Centre ' + c.raDeg.toFixed(2) + '°,' + c.decDeg.toFixed(2) + '°',
                                     ra: c.raDeg / 15,
                                     dec: c.decDeg
@@ -15651,16 +15652,16 @@ function ninaApp() {
                             });
                         } else {
                             // Empty-sky click, close any open card and
-                            // stash coords as skyTarget so a follow-up
+                            // stash coords as skyTargetJ2000 so a follow-up
                             // Slew & Center has somewhere to go.
                             this.skyInfo.visible = false;
-                            this.skyTarget = {
+                            this.skyTargetJ2000 = {
                                 name: 'Click ' + msg.raDeg.toFixed(2) + ',' + msg.decDeg.toFixed(2),
                                 ra: msg.raDeg / 15, dec: msg.decDeg
                             };
                             // A click is a definite RA/Dec, treat it as a fixed
                             // target so a later GoTo doesn't drift.
-                            this._skyFixedTarget = { ra: msg.raDeg / 15, dec: msg.decDeg, name: this.skyTarget.name };
+                            this._skyFixedTarget = { ra: msg.raDeg / 15, dec: msg.decDeg, name: this.skyTargetJ2000.name };
                         }
                         break;
                     default:
@@ -20941,11 +20942,11 @@ function ninaApp() {
         // that's the Go to btn.
         //
         // Bug fix: previously this called skyGoToMount() which prefers
-        // mount.ra/dec over skyTarget, so the map snapped to the mount
+        // mount.ra/dec over skyTargetJ2000, so the map snapped to the mount
         // position instead of the picked card. Now we drive the engine
         // straight via _skyLookAt with the card's coordinates.
         tonightPickTarget(item) {
-            this.skyTarget = {
+            this.skyTargetJ2000 = {
                 name:    item.name,
                 ra:      item.raHours,
                 dec:     item.decDeg,
@@ -21252,8 +21253,8 @@ function ninaApp() {
             // _celestialReady gate has been retired with d3, instead
             // we trust _skySendMessage to queue the message if the
             // bridge hasn't announced ready yet.
-            const ra  = this.mount?.ra  ?? (this.skyTarget?.ra)  ?? 0;
-            const dec = this.mount?.dec ?? (this.skyTarget?.dec) ?? 0;
+            const ra  = this.mountJ2000?.ra  ?? (this.skyTargetJ2000?.ra)  ?? 0;
+            const dec = this.mountJ2000?.dec ?? (this.skyTargetJ2000?.dec) ?? 0;
             const decClamped = Math.max(-89.5, Math.min(89.5, dec));
             // Tighter FOV so the camera's mount rectangle is actually
             // visible, default 45° wide-field view dwarfs typical
@@ -21306,7 +21307,7 @@ function ninaApp() {
         // SWE-6: _skyMapCenter() removed, d3-celestial's projection
         // is gone. Sync reads of the live map centre are not possible
         // through the bridge; callers use _skyGetCenter() async or
-        // fall back to skyTarget.
+        // fall back to skyTargetJ2000.
 
         updateSkyCameraFov() {
             // SWE-5: push the mount+target FOV rectangles to the
@@ -21321,7 +21322,7 @@ function ninaApp() {
         // SWE-5: build the {widthDeg, heightDeg, rotationDeg} pair from
         // the active rig + connected camera and post a set-fov-overlays
         // message. Mount FOV anchors on the live mount RA/Dec, target
-        // FOV anchors on skyTarget. Either side can be null to clear it.
+        // FOV anchors on skyTargetJ2000. Either side can be null to clear it.
         // ---- Red FOV rectangle while imaging ---------------------------
         // While a session runs (live stack / autorun / plan) the red
         // rectangle anchors on the last explicit plate solve (Slew & Center,
@@ -21480,12 +21481,12 @@ function ninaApp() {
                 : null;
 
             let mount = null;
-            if (this.mount?.connected
-                && Number.isFinite(this.mount.ra)
-                && Number.isFinite(this.mount.dec)) {
+            if (this.mountJ2000?.connected
+                && Number.isFinite(this.mountJ2000.ra)
+                && Number.isFinite(this.mountJ2000.dec)) {
                 mount = {
-                    raDeg: this.mount.ra * 15,
-                    decDeg: this.mount.dec,
+                    raDeg: this.mountJ2000.ra * 15,
+                    decDeg: this.mountJ2000.dec,
                     widthDeg: w, heightDeg: h, rotationDeg: mountRot,
                     flipV: flipV, cd: solveCd
                 };
@@ -22597,17 +22598,17 @@ function ninaApp() {
 
         // When a sky target is selected via search, also re-center the celestial
         // map on it. The FOV overlay redraws automatically since it reads from
-        // this.skyTarget on each updateSkyCameraFov() call.
+        // this.skyTargetJ2000 on each updateSkyCameraFov() call.
         _goToSelectedTarget() {
-            if (!this.skyTarget) return;
-            const ra = this.skyTarget.ra ?? this.skyTarget.raHours;
-            const dec = this.skyTarget.dec ?? this.skyTarget.decDeg;
+            if (!this.skyTargetJ2000) return;
+            const ra = this.skyTargetJ2000.ra ?? this.skyTargetJ2000.raHours;
+            const dec = this.skyTargetJ2000.dec ?? this.skyTargetJ2000.decDeg;
             if (!Number.isFinite(ra) || !Number.isFinite(dec)) return;
             // SWE-6: aim the engine via the postMessage bridge
             // instead of the old Celestial.rotate. FOV defaults to
             // whatever the engine already has (no zoom change).
             this._skyLookAt(ra, Math.max(-89.5, Math.min(89.5, dec)),
-                undefined, this.skyTarget.name || null);
+                undefined, this.skyTargetJ2000.name || null);
             this._pushSkyFovOverlays();
         },
 
@@ -22960,7 +22961,7 @@ function ninaApp() {
         // whole workflow (can be a few minutes), so progress is driven by
         // the WS mfState meanwhile; we just surface the final result.
         async triggerMeridianFlipNow() {
-            if (!this.mount.connected) {
+            if (!this.mountJ2000.connected) {
                 this.toast('Connect a mount first', 'warn');
                 return;
             }
@@ -26237,11 +26238,11 @@ function ninaApp() {
         // captured this way carries a real name into the file layout instead
         // of a placeholder the operator has to rename by hand.
         async planAddTargetFromMount() {
-            if (!Number.isFinite(this.mount.ra) || !Number.isFinite(this.mount.dec)) {
+            if (!Number.isFinite(this.mountJ2000.ra) || !Number.isFinite(this.mountJ2000.dec)) {
                 this.toast('Mount position unknown: connect the mount first', 'warn');
                 return;
             }
-            const ra = this.mount.ra, dec = this.mount.dec;
+            const ra = this.mountJ2000.ra, dec = this.mountJ2000.dec;
             const t = this._blankTarget();
             t.raHours = ra;
             t.decDeg = dec;
@@ -26274,7 +26275,7 @@ function ninaApp() {
                         thumbKey: r.name || null,
                     };
                 }
-                const p = await this.apiGet('/api/sky/nearest-planet?ra='
+                const p = await this.apiGet('/api/sky/nearest-planet?j2000=' + (this.mountDriver === 'indi') + '&ra='
                     + encodeURIComponent(ra) + '&dec=' + encodeURIComponent(dec));
                 if (p?.found && p.angularSepDeg <= Math.max(fov * 1.5, 2)) {
                     return { name: p.name, thumbKey: null };
@@ -26331,7 +26332,7 @@ function ninaApp() {
                     return;
                 }
                 const t = this._blankTarget();
-                t.name = this.skyTarget?.name || ('RA ' + (c.raDeg / 15).toFixed(2) + 'h');
+                t.name = this.skyTargetJ2000?.name || ('RA ' + (c.raDeg / 15).toFixed(2) + 'h');
                 t.raHours = c.raDeg / 15;
                 t.decDeg = c.decDeg;
                 t.rotation = this.skyTargetRotDeg ?? this.solveRotationDeg ?? (this.fov && this.fov.rotationDeg) ?? 0;
@@ -28587,11 +28588,11 @@ function ninaApp() {
             this.filesSolveLiveActive = true;
             try {
                 const body = {};
-                if (this.mount?.connected
-                        && Number.isFinite(this.mount.ra)
-                        && Number.isFinite(this.mount.dec)) {
-                    body.hintRa = this.mount.ra;
-                    body.hintDec = this.mount.dec;
+                if (this.mountJ2000?.connected
+                        && Number.isFinite(this.mountJ2000.ra)
+                        && Number.isFinite(this.mountJ2000.dec)) {
+                    body.hintRa = this.mountJ2000.ra;
+                    body.hintDec = this.mountJ2000.dec;
                 }
                 // See solve-file: a Pi solve can exceed the default 15s
                 // client timeout, so allow up to 180s (server caps at 120s).
@@ -28774,11 +28775,11 @@ function ninaApp() {
                     body.searchRadiusDeg = opts.searchRadiusDeg;
                 // If no explicit hint, fall back to mount pointing
                 // (the server also tries the FITS header on its own).
-                if (body.hintRa === undefined && this.mount?.connected
-                        && Number.isFinite(this.mount.ra)
-                        && Number.isFinite(this.mount.dec)) {
-                    body.hintRa = this.mount.ra;
-                    body.hintDec = this.mount.dec;
+                if (body.hintRa === undefined && this.mountJ2000?.connected
+                        && Number.isFinite(this.mountJ2000.ra)
+                        && Number.isFinite(this.mountJ2000.dec)) {
+                    body.hintRa = this.mountJ2000.ra;
+                    body.hintDec = this.mountJ2000.dec;
                 }
                 // Plate solving on a Pi can take well over the default 15s
                 // apiFetch timeout (4K frame, wide search radius), so the
@@ -28873,7 +28874,7 @@ function ninaApp() {
         async filesSolveCenter(centerOnly) {
             const r = this.filesSolveResult;
             if (!r || !r.success) return;
-            if (!this.mount?.connected) {
+            if (!this.mountJ2000?.connected) {
                 this.toast('Connect the mount first', 'warn');
                 return;
             }
@@ -29043,15 +29044,15 @@ function ninaApp() {
             // mount.ra is in hours, mount.dec in degrees (the schema
             // the WS handler writes on every tick). The /nearest-planet
             // endpoint expects the same units.
-            const ra = this.mount?.ra;
-            const dec = this.mount?.dec;
-            if (!this.mount?.connected || !Number.isFinite(ra) || !Number.isFinite(dec)) {
+            const ra = this.mountJ2000?.ra;
+            const dec = this.mountJ2000?.dec;
+            if (!this.mountJ2000?.connected || !Number.isFinite(ra) || !Number.isFinite(dec)) {
                 this.toast('Mount RA/Dec unavailable', 'warn');
                 return;
             }
             try {
                 const r = await this.apiGet(
-                    '/api/sky/nearest-planet?ra=' + encodeURIComponent(ra)
+                    '/api/sky/nearest-planet?j2000=' + (this.mountDriver === 'indi') + '&ra=' + encodeURIComponent(ra)
                     + '&dec=' + encodeURIComponent(dec));
                 if (!r?.found) {
                     this.toast('No planet detected nearby', 'warn');
@@ -29236,8 +29237,8 @@ function ninaApp() {
         // the FOV), falling back to the nearest planet/Moon. Fills targetName.
         // silent=true suppresses warnings (used by the post-center auto call).
         async identifyTarget(silent = false) {
-            const ra = this.mount?.ra, dec = this.mount?.dec;
-            if (!this.mount?.connected || !Number.isFinite(ra) || !Number.isFinite(dec)) {
+            const ra = this.mountJ2000?.ra, dec = this.mountJ2000?.dec;
+            if (!this.mountJ2000?.connected || !Number.isFinite(ra) || !Number.isFinite(dec)) {
                 if (!silent) this.toast('Mount RA/Dec unavailable', 'warn');
                 return null;
             }
@@ -29264,7 +29265,7 @@ function ninaApp() {
                     return r;
                 }
                 // No DSO in the field, try a Solar System body before giving up.
-                const p = await this.apiGet('/api/sky/nearest-planet?ra='
+                const p = await this.apiGet('/api/sky/nearest-planet?j2000=' + (this.mountDriver === 'indi') + '&ra='
                     + encodeURIComponent(ra) + '&dec=' + encodeURIComponent(dec));
                 if (p?.found && p.angularSepDeg <= Math.max(this._fovRadiusDeg() * 1.5, 2)) {
                     this._applyIdentifiedName(p.name);
@@ -30762,7 +30763,7 @@ function ninaApp() {
             catch (e) { if (this.toast) this.toast('Connect failed', 'warn'); }
         },
         basicAnyDisconnected() {
-            return !(this.mount && this.mount.connected) || !this.selectedCamera;
+            return !(this.mountJ2000 && this.mountJ2000.connected) || !this.selectedCamera;
         },
 
         // ---- Basic CONFIG screen ----
@@ -30878,14 +30879,14 @@ function ninaApp() {
         // Bottom-bar mount actions, each behind a confirm. Home reuses
         // telescopeFindHome (which confirms on its own); Park and Sync add one.
         async basicMountPark() {
-            if (!this.mount.connected) { this.toast('Connect a mount first', 'error'); return; }
+            if (!this.mountJ2000.connected) { this.toast('Connect a mount first', 'error'); return; }
             if (!await this._confirmAsync(
                 'Park the mount? It slews to its park position and stops tracking.',
                 { title: 'Park mount', okLabel: 'Park', cancelLabel: 'Cancel', danger: true })) return;
             return this.parkMount();
         },
         async basicMountSync() {
-            if (!this.mount.connected) { this.toast('Connect a mount first', 'error'); return; }
+            if (!this.mountJ2000.connected) { this.toast('Connect a mount first', 'error'); return; }
             if (!await this._confirmAsync(
                 'Plate-solve the current view and sync the mount to it? The mount does not move; ' +
                 'this corrects where it thinks it is pointing. Needs a camera and clear sky.',
@@ -31451,7 +31452,7 @@ function ninaApp() {
                 await this.apiPost(`/api/telescope/select/${encodeURIComponent(name)}`);
                 await this.apiPost('/api/telescope/connect');
                 this.selectedTelescope = name;
-                this.mount.connected = true;
+                this.mountJ2000.connected = true;
                 this.toast('Mount connected: ' + name, 'ok');
             } catch (e) {
                 this.toastFail('Mount connection failed', e);
@@ -31497,7 +31498,7 @@ function ninaApp() {
         // SharpCap / NINA Desktop.
         _mountJogActive: null,
         async mountMoveStart(direction, evt) {
-            if (!this.mount.connected) return;
+            if (!this.mountJ2000.connected) return;
             // Capture the pointer so subsequent pointerup fires on
             // the SAME button even if the user's finger / cursor
             // drifts outside its bounds while held.
@@ -31547,12 +31548,12 @@ function ninaApp() {
         // reflects within the next 1Hz tick. Bound to the slider
         // `<input>` value via the setter below.
         get mountSlewRateIndex() {
-            const rates = this.mount?.slewRates || [];
+            const rates = this.mountJ2000?.slewRates || [];
             const idx = rates.findIndex(r => r.active);
             return idx;   // -1 when none active (will be 0-anchored by UI)
         },
         async setMountSlewRate(idx) {
-            const rates = this.mount?.slewRates || [];
+            const rates = this.mountJ2000?.slewRates || [];
             const i = Math.max(0, Math.min(rates.length - 1, parseInt(idx, 10)));
             const target = rates[i];
             if (!target) return;
@@ -31649,7 +31650,7 @@ function ninaApp() {
         },
 
         async toggleTracking() {
-            const newState = !this.mount.tracking;
+            const newState = !this.mountJ2000.tracking;
             try {
                 await this.apiPost('/api/telescope/tracking', { enabled: newState });
                 this.toast('Tracking ' + (newState ? 'ON' : 'OFF'), 'info');
@@ -31828,11 +31829,11 @@ function ninaApp() {
             this.filesSolveLiveActive = true;
             try {
                 const body = {};
-                if (this.mount?.connected
-                        && Number.isFinite(this.mount.ra)
-                        && Number.isFinite(this.mount.dec)) {
-                    body.hintRa = this.mount.ra;
-                    body.hintDec = this.mount.dec;
+                if (this.mountJ2000?.connected
+                        && Number.isFinite(this.mountJ2000.ra)
+                        && Number.isFinite(this.mountJ2000.dec)) {
+                    body.hintRa = this.mountJ2000.ra;
+                    body.hintDec = this.mountJ2000.dec;
                 }
                 const resp = await this.apiPost('/api/platesolve/solve-latest', body,
                     { timeout: 180000 });
@@ -31936,13 +31937,13 @@ function ninaApp() {
         /// Turn the camera to the chosen angle where the mount already
         /// points: a center-only job with the rotation attached.
         async skyRotateNow() {
-            if (!this.mount?.connected) { this.toast('Connect a mount first', 'warn'); return; }
+            if (!this.mountJ2000?.connected) { this.toast('Connect a mount first', 'warn'); return; }
             if (!this.rotator?.connected) { this.toast('Connect a rotator first', 'warn'); return; }
             if (!Number.isFinite(this.skyTargetRotDeg)) return;
             if (this.slewCenterJobId) { this.toast('Slew & Center already running', 'warn'); return; }
             try {
                 const data = await this._postSlewAndCenter({
-                    ra: this.mount.ra, dec: this.mount.dec, toleranceArcsec: 30,
+                    ra: this.mountJ2000.ra, dec: this.mountJ2000.dec, toleranceArcsec: 30,
                     centerOnly: true, rotation: this.skyTargetRotDeg
                 });
                 if (!data) return;
@@ -34559,18 +34560,18 @@ function ninaApp() {
         },
 
         // PA-6: slew + plate-solve + sync on the chosen target. Reuses
-        // skyTarget + slewAndCenter, same flow Tonight's Best / Sky
+        // skyTargetJ2000 + slewAndCenter, same flow Tonight's Best / Sky
         // tab use. We do NOT auto-start TPPA after slew: the user
         // confirms the field is good and clicks Start. Two reasons:
         //   1. Plate-solve might fail (cloud, exposure off), better
         //      to fix that first than have TPPA also fail mid-flight.
         //   2. The Start button is right there; one click is fine.
         async polarGoToTarget(t) {
-            if (!this.mount?.connected) {
+            if (!this.mountJ2000?.connected) {
                 this.toast('Mount not connected', 'warn');
                 return;
             }
-            this.skyTarget = {
+            this.skyTargetJ2000 = {
                 name: t.name,
                 ra: t.raHours,
                 dec: t.decDeg,
@@ -35261,8 +35262,8 @@ function ninaApp() {
         // arrival so the tube stays vertical. Reuses the same 409 safety-confirm
         // flow as slew & center.
         async pointToZenith() {
-            if (!this.mount?.connected) { this.toast('Connect the mount first', 'warn'); return; }
-            if (this.mount?.parked) { this.toast('Unpark the mount first', 'warn'); return; }
+            if (!this.mountJ2000?.connected) { this.toast('Connect the mount first', 'warn'); return; }
+            if (this.mountJ2000?.parked) { this.toast('Unpark the mount first', 'warn'); return; }
             const ok = await this._confirmAsync(
                 'The mount will slew at full speed to point nearly straight up, so ' +
                 'you can rest a flat panel on the aperture. Tracking stops on arrival. ' +
@@ -35359,8 +35360,8 @@ function ninaApp() {
                     null, { timeout: 5000 });
                 const body = await resp.json().catch(() => ({}));
                 if (body && typeof body.ra === 'number') {
-                    this.mount.ra = body.ra;
-                    this.mount.dec = body.dec;
+                    this.mountJ2000.ra = body.ra;
+                    this.mountJ2000.dec = body.dec;
                     this.toast('Mount position refreshed from driver', 'ok');
                 }
             } catch (e) {
@@ -35507,7 +35508,7 @@ function ninaApp() {
         // attaches after the scope is up.
         async equipConnectAll() {
             const steps = [
-                { has: () => !!this.equipMountChoice && !this.mount?.connected, fn: () => this.equipConnectMount() },
+                { has: () => !!this.equipMountChoice && !this.mountJ2000?.connected, fn: () => this.equipConnectMount() },
                 { has: () => !!this.equipCameraChoice && !this.selectedCamera, fn: () => this.equipConnectCamera() },
                 { has: () => !!this.equipFocuserChoice && !this.focusConnected, fn: () => this.equipConnectFocuser() },
                 { has: () => !!this.equipFilterChoice && !this.filterWheel?.connected, fn: () => this.equipConnectFilter() },
@@ -35545,7 +35546,7 @@ function ninaApp() {
                 { has: () => !!this.filterWheel?.connected, fn: () => this.equipDisconnectFilter() },
                 { has: () => !!this.focusConnected, fn: () => this.equipDisconnectFocuser() },
                 { has: () => !!this.selectedCamera, fn: () => this.equipDisconnectCamera() },
-                { has: () => !!this.mount?.connected, fn: () => this.equipDisconnectMount() },
+                { has: () => !!this.mountJ2000?.connected, fn: () => this.equipDisconnectMount() },
             ];
             const todo = steps.filter(s => s.has());
             if (todo.length === 0) { this.toast('No connected devices to disconnect', 'warn'); return; }
@@ -36934,7 +36935,7 @@ function ninaApp() {
                     `/api/telescope/select/${encodeURIComponent(this.equipMountChoice)}${qs}`);
                 await this.apiPost('/api/telescope/connect');
                 this.selectedTelescope = this.equipMountChoice;
-                this.mount.connected = true;
+                this.mountJ2000.connected = true;
                 this._persistRigSelection({
                     telescope: this.equipMountChoice,
                     telescopeDriver: this.mountDriver || 'indi'
@@ -42703,10 +42704,10 @@ function ninaApp() {
             try {
                 await this.apiPost('/api/telescope/disconnect');
                 this.selectedTelescope = null;
-                this.mount.connected = false;
-                this.mount.tracking = false;
-                this.mount.slewing = false;
-                this.mount.parked = false;
+                this.mountJ2000.connected = false;
+                this.mountJ2000.tracking = false;
+                this.mountJ2000.slewing = false;
+                this.mountJ2000.parked = false;
                 this.toast('Mount disconnected', 'warn');
             } catch (e) {
                 this.toastFail('Mount disconnect failed', e);
@@ -44040,10 +44041,10 @@ function ninaApp() {
         // ---- Altitude chart ----
 
         async loadAltitudeChart() {
-            if (!this.skyTarget) return;
+            if (!this.skyTargetJ2000) return;
             try {
                 this.altitudeData = await this.apiGet(
-                    `/api/sky/altitude?ra=${this.skyTarget.ra}&dec=${this.skyTarget.dec}&stepMinutes=15`);
+                    `/api/sky/altitude?ra=${this.skyTargetJ2000.ra}&dec=${this.skyTargetJ2000.dec}&stepMinutes=15`);
                 this.$nextTick(() => this.updateAltChart());
             } catch (e) {
                 this.toastFail('Altitude calc failed', e);
@@ -44094,7 +44095,7 @@ function ninaApp() {
             try {
                 const t = await this.apiGet(`/api/stellarium/target?host=${encodeURIComponent(host)}&port=${port}`);
                 if (!t) { this.toast('Stellarium: no object selected', 'warn'); return; }
-                this.skyTarget = {
+                this.skyTargetJ2000 = {
                     name: t.name,
                     ra: t.raHours,
                     dec: t.decDeg,
@@ -44242,7 +44243,7 @@ function ninaApp() {
                 this.skyResults = merged;
 
                 if (merged.length === 0) {
-                    this.skyTarget = null;
+                    this.skyTargetJ2000 = null;
                     this.skyShowResults = false;
                     this.toast('No objects found for "' + q + '"', 'warn');
                     return;   // nothing found, so nothing worth remembering
@@ -44260,7 +44261,7 @@ function ninaApp() {
         },
 
         // SWE-5: take a bridge rich-object payload and project it onto
-        // the skyInfo card state. Also seeds skyTarget so Slew &
+        // the skyInfo card state. Also seeds skyTargetJ2000 so Slew &
         // Center actions outside the card still go somewhere sensible.
         async _populateSkyInfo(obj) {
             if (!obj) return;
@@ -44304,17 +44305,17 @@ function ninaApp() {
                 this._skyInfoChart = null;
             }
 
-            // Also stash as skyTarget so the existing Slew & Center
+            // Also stash as skyTargetJ2000 so the existing Slew & Center
             // button below the map picks it up.
             if (Number.isFinite(obj.raDeg) && Number.isFinite(obj.decDeg)) {
-                this.skyTarget = {
+                this.skyTargetJ2000 = {
                     name: obj.name,
                     ra: obj.raDeg / 15,
                     dec: obj.decDeg
                 };
                 // Smooth-pan the engine view to the picked object,
                 // gated by the user's "Auto-center on select" toggle.
-                // When off, the card still opens and skyTarget is
+                // When off, the card still opens and skyTargetJ2000 is
                 // still set (so Slew & Center / Slew Only buttons
                 // work normally), but the engine view stays put.
                 if (this.skyAutoCenterOnSelect) {
@@ -44670,8 +44671,8 @@ function ninaApp() {
         // driver's reported alt/az (ground truth on AltAz mounts). Replaces an
         // existing point within 1 degree of the same azimuth instead of stacking.
         horizonAddFromMount() {
-            const az = Number(this.mount?.az), alt = Number(this.mount?.alt);
-            if (!this.mount?.connected || !Number.isFinite(az) || !Number.isFinite(alt)) {
+            const az = Number(this.mountJ2000?.az), alt = Number(this.mountJ2000?.alt);
+            if (!this.mountJ2000?.connected || !Number.isFinite(az) || !Number.isFinite(alt)) {
                 this.toast(this.$t('Connect the mount to add a horizon point from its position'), 'warn');
                 return;
             }
@@ -44713,7 +44714,7 @@ function ninaApp() {
 
         // Card action: route Slew & Center via the existing path.
         async skyInfoSlewCenter() {
-            // _currentSlewTarget already falls back to skyTarget which
+            // _currentSlewTarget already falls back to skyTargetJ2000 which
             // _populateSkyInfo populated. Trigger the full workflow.
             return this.slewAndCenter();
         },
@@ -44726,11 +44727,11 @@ function ninaApp() {
         },
 
         skyInfoAddToSequence() {
-            if (this.skyTarget) this.addToSequence();
+            if (this.skyTargetJ2000) this.addToSequence();
         },
 
         selectSkyTarget(obj) {
-            this.skyTarget = obj;
+            this.skyTargetJ2000 = obj;
             this.skyShowResults = false;
             // Atlas-filter result list shares the same dismissal
             // pattern as the free-text search dropdown: once the
@@ -44774,7 +44775,7 @@ function ninaApp() {
         // d3-celestial projection rotation, the same source the
         // on-map target rectangle uses, so what the user sees framed
         // is what the mount tries to put under the camera.
-        // Falls back to a picked skyTarget if the map centre can't
+        // Falls back to a picked skyTargetJ2000 if the map centre can't
         // be read for any reason.
         async slewAndCenter() {
             // Target resolution (fixed catalog object / click over the drifting
@@ -44824,7 +44825,7 @@ function ninaApp() {
         // object. Job-shaped; we poll status and reuse the SKY solver console
         // (the offset-field solve streams to it for free).
         async startCenterBody() {
-            if (!this.mount.connected) { this.toast('Connect a mount first', 'error'); return; }
+            if (!this.mountJ2000.connected) { this.toast('Connect a mount first', 'error'); return; }
             if (this.centerBodyJobId) { this.toast('A center job is already running', 'warn'); return; }
             const body = this.centerBodyName;
             if (body === 'Sun') {
@@ -44929,10 +44930,10 @@ function ninaApp() {
         // (clouds), you aim the map at the patch the scope is really on and
         // confirm. A wrong sync throws off later GoTos, hence the modal.
         async syncMountHere() {
-            if (!this.mount.connected) { this.toast('Connect a mount first', 'error'); return; }
+            if (!this.mountJ2000.connected) { this.toast('Connect a mount first', 'error'); return; }
             let target = await this._resolveSkyTarget();
             if (!target) { this.toast('Sky map not ready', 'error'); return; }
-            const name = (this.skyTarget && this.skyTarget.name) ? this.skyTarget.name + '\n  ' : '';
+            const name = (this.skyTargetJ2000 && this.skyTargetJ2000.name) ? this.skyTargetJ2000.name + '\n  ' : '';
             if (!await this._confirmAsync(
                 'Tell the mount it is pointing at:\n\n  ' + name +
                 'RA ' + this.formatRA(target.ra) + '   Dec ' + this.formatDec(target.dec) +
@@ -44955,7 +44956,7 @@ function ninaApp() {
         // after the AM3 driver lost its position). Needs a camera + clear sky;
         // use "Sync here" (manual) when clouded out.
         async solveAndSyncHere() {
-            if (!this.mount.connected) { this.toast('Connect a mount first', 'error'); return; }
+            if (!this.mountJ2000.connected) { this.toast('Connect a mount first', 'error'); return; }
             if (this.solveSyncBusy) return;
             // Abort controller so the SKY panel's "Abort" button can cancel
             // the in-flight capture + solve (both honour the request token
@@ -44981,8 +44982,8 @@ function ninaApp() {
                     kind: 'preview'
                 }, { timeout: 60000, signal });
                 const body = {};
-                if (Number.isFinite(this.mount.ra) && Number.isFinite(this.mount.dec)) {
-                    body.hintRa = this.mount.ra; body.hintDec = this.mount.dec;
+                if (Number.isFinite(this.mountJ2000.ra) && Number.isFinite(this.mountJ2000.dec)) {
+                    body.hintRa = this.mountJ2000.ra; body.hintDec = this.mountJ2000.dec;
                 }
                 this.toast('Plate solving…', 'info');
                 const resp = await this.apiPost('/api/platesolve/solve-latest', body, { timeout: 180000, signal });
@@ -45032,8 +45033,8 @@ function ninaApp() {
                     binning: (this.aux && this.aux.binning > 0) ? this.aux.binning : 1
                 };
                 if (this.aux && this.aux.gain != null) body.gain = this.aux.gain;
-                if (Number.isFinite(this.mount.ra) && Number.isFinite(this.mount.dec)) {
-                    body.hintRa = this.mount.ra; body.hintDec = this.mount.dec;
+                if (Number.isFinite(this.mountJ2000.ra) && Number.isFinite(this.mountJ2000.dec)) {
+                    body.hintRa = this.mountJ2000.ra; body.hintDec = this.mountJ2000.dec;
                 }
                 this.toast('Solving aux camera FOV…', 'info');
                 const resp = await this.apiPost('/api/platesolve/solve-aux', body, { timeout: 180000 });
@@ -45062,8 +45063,8 @@ function ninaApp() {
         _currentSlewTarget() {
             // SWE-6: d3-celestial removed; the live map centre is
             // now reachable only async via _skyGetCenter(). Sync
-            // callers fall back to the last picked skyTarget.
-            const t = this.skyTarget;
+            // callers fall back to the last picked skyTargetJ2000.
+            const t = this.skyTargetJ2000;
             if (t && Number.isFinite(t.ra) && Number.isFinite(t.dec)) {
                 return { ra: t.ra, dec: t.dec };
             }
@@ -45272,19 +45273,19 @@ function ninaApp() {
         },
 
         addToSequence() {
-            if (!this.skyTarget) {
+            if (!this.skyTargetJ2000) {
                 this.toast('Pick a target on the map first', 'warn');
                 return;
             }
             const item = {
-                name: this.skyTarget.name,
+                name: this.skyTargetJ2000.name,
                 exposure: this.exposure,
                 gain: this.gain,
                 binning: parseInt(this.binning),
                 count: 10,
                 filter: null,
-                ra: parseFloat(this.skyTarget.ra) || null,
-                dec: parseFloat(this.skyTarget.dec) || null,
+                ra: parseFloat(this.skyTargetJ2000.ra) || null,
+                dec: parseFloat(this.skyTargetJ2000.dec) || null,
                 // Mark items added from Sky Explorer so the card UI
                 // knows it has a catalog name worth resolving against
                 // the celestial-image service (NASA / Wikipedia
@@ -45885,7 +45886,7 @@ function ninaApp() {
             }
 
             // Mount slewing
-            if (this.mount?.slewing) {
+            if (this.mountJ2000?.slewing) {
                 out.push({ id: 'slew', icon: '🔭', kind: 'info', label: 'Slewing',
                     onClick: () => { this.tab = 'sky'; } });
             }
@@ -47214,7 +47215,7 @@ function ninaApp() {
             // retries what refused.
             await new Promise(r => setTimeout(r, 5000));
             const missed = (this.equipFocuserChoice && !this.focusConnected)
-                || (this.equipMountChoice && !this.mount?.connected)
+                || (this.equipMountChoice && !this.mountJ2000?.connected)
                 || (this.equipCameraChoice && !this.selectedCamera)
                 || (this.equipFilterChoice && !this.filterWheel?.connected)
                 || (this.guideCamera && !this.guider?.guideCameraConnected);
@@ -49334,7 +49335,7 @@ function ninaApp() {
                     // actually pointing. Warn so the user recovers with a
                     // no-move Sync (Solve & Sync, or "Sync here" on SKY)
                     // instead of a blind Home. Only when a mount is present.
-                    if (this.mount && this.mount.connected) {
+                    if (this.mountJ2000 && this.mountJ2000.connected) {
                         this.toast('INDI reconnected: if the mount position looks reset to ' +
                             'home, fix it without moving via Solve & Sync (PREVIEW) or ' +
                             '"Sync here" on the SKY map; only Home if you must.', 'warn', 12000);
@@ -49596,8 +49597,8 @@ function ninaApp() {
                 this.auxCapture.noOutputDir = !!msg.auxCapture.noOutputDir;
             }
             if (eq.telescope) {
-                const prevRa = this.mount.ra, prevDec = this.mount.dec;
-                Object.assign(this.mount, {
+                const prevRa = this.mountJ2000.ra, prevDec = this.mountJ2000.dec;
+                Object.assign(this.mountJ2000, {
                     ra: eq.telescope.ra, dec: eq.telescope.dec,
                     alt: eq.telescope.alt, az: eq.telescope.az,
                     tracking: eq.telescope.tracking, slewing: eq.telescope.slewing,
@@ -49607,7 +49608,7 @@ function ninaApp() {
                     // (Park, Find Home, pier side). Fall back to current
                     // value when the payload doesn't carry it (e.g.
                     // alternative backend that hasn't been updated).
-                    capabilities: eq.telescope.capabilities || this.mount.capabilities,
+                    capabilities: eq.telescope.capabilities || this.mountJ2000.capabilities,
                     // SLEWRATE: discrete steps the driver advertises +
                     // which is currently lit. Empty array when the
                     // driver hard-codes a single rate -- the slider in
@@ -49630,8 +49631,8 @@ function ninaApp() {
                 // Blue mount-anchored FOV overlay needs to track the
                 // new RA/Dec on every status push so the user sees the
                 // scope walk across the sky during a slew. The
-                // !skyTarget gate from the d3-celestial era is gone,
-                // with the new screen-anchored red target, skyTarget
+                // !skyTargetJ2000 gate from the d3-celestial era is gone,
+                // with the new screen-anchored red target, skyTargetJ2000
                 // is always set (it tracks the engine centre), so that
                 // gate would prevent ALL updates. The bridge has its
                 // own per-push dedup (3-decimal RA/Dec hash) that
@@ -49640,7 +49641,7 @@ function ninaApp() {
                 // to debounce here.
                 if (this.tab === 'sky'
                     && this.aladinShowFov
-                    && (prevRa !== this.mount.ra || prevDec !== this.mount.dec)
+                    && (prevRa !== this.mountJ2000.ra || prevDec !== this.mountJ2000.dec)
                     && typeof this.updateSkyCameraFov === 'function') {
                     this.updateSkyCameraFov();
                 }
@@ -51057,10 +51058,10 @@ function ninaApp() {
         //                       Mosaic planner
         // ============================================================
         openMosaicPlanner() {
-            if (!this.skyTarget) { this.toast('Select a target first', 'warn'); return; }
-            this.mosaic.req.targetName = this.skyTarget.name || 'Target';
-            this.mosaic.req.centreRaHours = this.skyTarget.ra ?? this.skyTarget.raHours ?? 0;
-            this.mosaic.req.centreDecDeg  = this.skyTarget.dec ?? this.skyTarget.decDeg  ?? 0;
+            if (!this.skyTargetJ2000) { this.toast('Select a target first', 'warn'); return; }
+            this.mosaic.req.targetName = this.skyTargetJ2000.name || 'Target';
+            this.mosaic.req.centreRaHours = this.skyTargetJ2000.ra ?? this.skyTargetJ2000.raHours ?? 0;
+            this.mosaic.req.centreDecDeg  = this.skyTargetJ2000.dec ?? this.skyTargetJ2000.decDeg  ?? 0;
             // Auto-fill per-panel FOV from the active rig's FOV calculation (already on this.fov)
             this.mosaic.req.panelFovWidthDeg  = +(this.fov?.width  || 1).toFixed(3);
             this.mosaic.req.panelFovHeightDeg = +(this.fov?.height || 1).toFixed(3);
